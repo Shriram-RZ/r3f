@@ -10,6 +10,21 @@ function GlowingPoint({ position, label, onPointClick, index, point }) {
   const pulseRef = useRef();
   const [hovered, setHovered] = useState(false);
 
+  // Manage cursor style on hover
+  useEffect(() => {
+    const handleCursor = () => {
+      if (hovered) {
+        document.body.style.cursor = "pointer";
+      } else {
+        document.body.style.cursor = "default";
+      }
+    };
+    handleCursor();
+    return () => {
+      document.body.style.cursor = "default";
+    };
+  }, [hovered]);
+
   useFrame((state) => {
     if (meshRef.current) {
       meshRef.current.scale.lerp(
@@ -35,7 +50,6 @@ function GlowingPoint({ position, label, onPointClick, index, point }) {
         onClick={() => onPointClick(position, label, point)}
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
-        style={{ cursor: hovered ? "pointer" : "default" }}
       >
         <sphereGeometry args={[0.3, 32, 32]} />
         <meshBasicMaterial color={hovered ? 0xffff00 : 0x00ff88} toneMapped={false} />
@@ -91,19 +105,21 @@ function CameraController({ targetPosition, targetLookAt }) {
     isAnimating: false,
   });
 
-  useFrame(() => {
-    if (!targetPosition || !targetLookAt) {
-      return;
-    }
+  // Start animation only when target changes
+  useEffect(() => {
+    if (!targetPosition || !targetLookAt) return;
 
+    animationRef.current.startPosition = camera.position.clone();
+    animationRef.current.startLookAt = new THREE.Vector3(0, 0, 0);
+    animationRef.current.progress = 0;
+    animationRef.current.isAnimating = true;
+  }, [targetPosition, targetLookAt, camera.position]);
+
+  useFrame(() => {
     const animation = animationRef.current;
 
-    // Start new animation
     if (!animation.isAnimating) {
-      animation.startPosition = camera.position.clone();
-      animation.startLookAt = new THREE.Vector3(0, 0, 0);
-      animation.progress = 0;
-      animation.isAnimating = true;
+      return;
     }
 
     // Update animation progress - Ultra smooth movement
@@ -194,8 +210,8 @@ export default function App() {
       content: {
         title: "Master Bedroom",
         description: "Spacious master bedroom with premium furnishings and natural lighting.",
-        specs: ["3.5m x 4.2m", "King bed", "Ensuite bathroom"]
-      }
+        specs: ["3.5m x 4.2m", "King bed", "Ensuite bathroom"],
+      },
     },
     {
       position: [-3, 2, 1],
@@ -203,8 +219,8 @@ export default function App() {
       content: {
         title: "Living Room",
         description: "Modern living area with comfortable seating and entertainment setup.",
-        specs: ["5m x 6m", "Premium sofa", "65\" Smart TV"]
-      }
+        specs: ["5m x 6m", "Premium sofa", '65" Smart TV'],
+      },
     },
     {
       position: [1, -1, 3],
@@ -212,8 +228,8 @@ export default function App() {
       content: {
         title: "Kitchen",
         description: "Contemporary kitchen with modern appliances and ample storage.",
-        specs: ["3m x 4m", "Stainless steel appliances", "Granite counters"]
-      }
+        specs: ["3m x 4m", "Stainless steel appliances", "Granite counters"],
+      },
     },
     {
       position: [-2, 0, -3],
@@ -221,8 +237,8 @@ export default function App() {
       content: {
         title: "Bathroom",
         description: "Luxurious bathroom with spa-like amenities.",
-        specs: ["2.5m x 3m", "Jacuzzi tub", "Rainfall shower"]
-      }
+        specs: ["2.5m x 3m", "Jacuzzi tub", "Rainfall shower"],
+      },
     },
   ]);
 
@@ -283,7 +299,6 @@ export default function App() {
         >
           <color attach="background" args={[0x0a0e27]} />
           {/* Cinematic Lighting Setup */}
-          {/* Key Light - Main directional light */}
           <directionalLight
             position={[8, 10, 6]}
             intensity={0.9}
@@ -298,25 +313,18 @@ export default function App() {
             shadow-bias={-0.0001}
           />
 
-          {/* Fill Light - Soft secondary light */}
           <directionalLight position={[-8, 6, 8]} intensity={0.4} color={0xb0c4ff} />
 
-          {/* Rim Light - Back light for depth */}
           <directionalLight position={[0, 8, -10]} intensity={0.3} color={0xffd4a3} />
 
-          {/* Ambient Light - Global illumination */}
           <ambientLight intensity={0.35} color={0xffffff} />
 
-          {/* Soft Point Light - For fill in dark corners */}
           <pointLight position={[5, 5, 5]} intensity={0.2} color={0xffffff} />
 
-          {/* Background */}
           <Background />
 
-          {/* Model */}
           <Model url="/model/no_model.glb" />
 
-          {/* Glowing Points */}
           {glowingPoints.map((point, index) => (
             <GlowingPoint
               key={index}
@@ -328,10 +336,8 @@ export default function App() {
             />
           ))}
 
-          {/* Camera Controller */}
           <CameraController targetPosition={cameraTarget} targetLookAt={cameraLookAt} />
 
-          {/* Disabled Controls - Model is unmovable */}
           <OrbitControls
             enabled={false}
             autoRotate={false}
